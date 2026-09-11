@@ -1,0 +1,42 @@
+name: Build Tatli Debt Messenger
+
+on:
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Build standalone Windows application
+        shell: pwsh
+        run: dotnet publish TatliDebtMessenger/TatliDebtMessenger.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -p:DebugType=None -p:DebugSymbols=false -o publish
+
+      - name: Verify executable
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem publish -Filter "*.exe" | Select-Object -First 1
+          if (-not $exe) { throw "Executable was not created" }
+          Write-Host "Built $($exe.Name) - $([math]::Round($exe.Length / 1MB, 2)) MB"
+
+      - name: Upload ready application
+        uses: actions/upload-artifact@v4
+        with:
+          name: Tatli-Debt-Messenger-Windows-x64
+          path: publish/Tatli Debt Messenger.exe
+          if-no-files-found: error
+          compression-level: 9
+          retention-days: 30
